@@ -2,3 +2,4 @@
 torch==1.12.1+cu116
 pytorch-lightning==1.7.6
 vosk==0.3.43
+SoundFile==0.10.3.post1
