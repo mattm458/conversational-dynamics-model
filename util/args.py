@@ -9,8 +9,9 @@ def train_subparser(subparsers):
     train_subparser.add_argument(
         "--checkpoint",
         type=str,
-        required=True,
+        required=False,
         help="Resume training from the given checkpoint.",
+        default=None,
     )
 
     train_subparser.add_argument(
@@ -53,10 +54,13 @@ def torchscript_subparser(subparsers):
         "torchscript", help="Export the model to TorchScript"
     )
 
+    # TODO: The checkpoint argument should be required!
+    # Only optional for testing purposes during development
     torchscript_subparser.add_argument(
         "--checkpoint",
         type=str,
-        required=True,
+        required=False,
+        default=None,
         help="A trained checkpoint to export with the model.",
     )
 
