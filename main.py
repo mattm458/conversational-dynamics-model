@@ -2,7 +2,7 @@
 import json
 import time
 
-from model.neural_entrainment import NeuralEntrainment
+from model.sequential_conversation import SequentialConversationModel
 from util.args import args
 
 if __name__ == "__main__":
@@ -29,11 +29,11 @@ if __name__ == "__main__":
         # TODO: args.checkpoint should be required for Torchscript export!
         # Only optional for testing purposes during development
         if args.checkpoint is not None:
-            model = NeuralEntrainment.load_from_checkpoint(
+            model = SequentialConversationModel.load_from_checkpoint(
                 args.checkpoint, **config["model"]
             )
         else:
-            model = NeuralEntrainment(**config["model"])
+            model = SequentialConversationModel(**config["model"])
 
         # Do the export
         model.to_torchscript(filename)
