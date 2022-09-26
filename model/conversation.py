@@ -1,9 +1,11 @@
-import pytorch_lightning as pl
+from torch import nn
 
 
-class NeuralEntrainment(pl.LightningModule):
+class ConversationModel(nn.Module):
     def __init__(self):
         super().__init__()
 
     def forward(self):
         return None
+
+
