@@ -15,10 +15,17 @@ def train_subparser(subparsers):
     )
 
     train_subparser.add_argument(
-        "--dataset-dir",
+        "--dataset",
         type=str,
         required=True,
-        help="The base dataset directory",
+        help="A CSV file containing dialogue",
+    )
+
+    train_subparser.add_argument(
+        "--embeddings_dir",
+        type=str,
+        required=True,
+        help="Path to a directory with word embedings extracted from the dataset",
     )
 
 
