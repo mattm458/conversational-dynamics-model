@@ -3,7 +3,6 @@ from os import path
 from typing import Dict, List, Tuple
 
 import torch
-from pandas import DataFrame
 from torch import BoolTensor, FloatTensor, LongTensor, Tensor, nn
 from torch.utils.data import Dataset
 
@@ -11,8 +10,8 @@ from torch.utils.data import Dataset
 class ConversationDataset(Dataset):
     def __init__(
         self,
-        df: DataFrame,
         ses_ids: List[int],
+        features_dir: str,
         embeddings_dir: str,
         speech_feature_keys: List[str] = [
             "pitch_mean_norm",
@@ -26,10 +25,10 @@ class ConversationDataset(Dataset):
     ):
         super().__init__()
 
-        self.df = df
         self.ses_ids = ses_ids
-        self.speech_feature_keys = speech_feature_keys
+        self.features_dir = features_dir
         self.embeddings_dir = embeddings_dir
+        self.speech_feature_keys = speech_feature_keys
 
     def __len__(self) -> int:
         return len(self.ses_ids)
@@ -37,12 +36,12 @@ class ConversationDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[Dict[str, Tensor], Dict[str, Tensor]]:
         # Get the session ID associated with this index and the session data
         ses_id = self.ses_ids[idx]
-        ses_data = self.df.loc[ses_id]
+        ses_data = torch.load(path.join(self.features_dir, f"{ses_id}.pt"))
 
         # Find out which of the speakers in the dialogue (A or B) is considered the
         # "them" speaker - the human half of the conversation that the model is attempting
         # to respond to
-        speaker_them: str = ses_data.speaker.iloc[0]
+        speaker_them: str = ses_data['speaker'][0]
 
         # Deal with embeddings - create a tensor of start/end indices for each
         # embeddings sequence in the session
@@ -61,11 +60,10 @@ class ConversationDataset(Dataset):
         # Keep track of the number of "us" turns there are in total
         us_count = 0
 
-        # Expand feature data into the us/them format
-        for i, (_, row) in enumerate(ses_data.iterrows()):
-            features_raw = row[self.speech_feature_keys].values.tolist()
+        for i, speaker in enumerate(ses_data['speaker']):
+            features_raw = [ses_data[f][i] for f in self.speech_feature_keys]
 
-            if row.speaker == speaker_them:
+            if speaker == speaker_them:
                 output_X["speech_features"].append(features_raw)
                 output_X["dialogue_timestep"].append(i)
                 output_X["speaker"].append([1.0, 0.0])
@@ -75,10 +73,9 @@ class ConversationDataset(Dataset):
                 output_X["feature_encode_mask"].append(True)
                 output_X["predict_mask"].append(False)
                 output_X["autoregress_mask"].append(False)
-
             else:
                 us_count += 1
-                
+
                 output_X["speech_features"].append(
                     [0.0 for x in range(len(self.speech_feature_keys))]
                 )
@@ -110,7 +107,7 @@ class ConversationDataset(Dataset):
         output_y = dict(output_y)
         output_y["speech_features"] = FloatTensor(output_y["speech_features"])
         output_y["speech_features_len"] = LongTensor([len(output_y["speech_features"])])
-        output_y['us_count'] = LongTensor([us_count])
+        output_y["us_count"] = LongTensor([us_count])
 
         # Embeddings -------------------------------------------------------------
 

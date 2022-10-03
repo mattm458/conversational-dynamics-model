@@ -1,6 +1,7 @@
 #! python
 import json
 import time
+import os
 
 import pandas as pd
 import pytorch_lightning as pl
@@ -32,9 +33,9 @@ if __name__ == "__main__":
 
     elif args.mode == "train" or args.mode == "lr":
         # Train a new model from scratch, or resume training from a checkpoint.
-        df = pd.read_csv(args.dataset)
-        ses_ids = df.ses_id.unique()
-        df = df.set_index("ses_id")
+        ses_ids = [
+            x.replace(".pt", "") for x in os.listdir(args.dataset_dir) if ".pt" in x
+        ]
 
         train_ses, test_ses = train_test_split(
             ses_ids, train_size=0.8, random_state=9001
@@ -44,8 +45,8 @@ if __name__ == "__main__":
         )
 
         train_dataset = ConversationDataset(
-            df,
             ses_ids=train_ses,
+            features_dir=args.dataset_dir,
             embeddings_dir=args.embeddings_dir,
             speech_feature_keys=config["speech_feature_keys"],
         )
@@ -58,8 +59,8 @@ if __name__ == "__main__":
         )
 
         val_dataset = ConversationDataset(
-            df,
             ses_ids=val_ses,
+            features_dir=args.dataset_dir,
             embeddings_dir=args.embeddings_dir,
             speech_feature_keys=config["speech_feature_keys"],
         )
@@ -100,7 +101,9 @@ if __name__ == "__main__":
                     )
                 )
 
-            trainer = pl.Trainer(callbacks=callbacks, devices=[args.device], **config["trainer"])
+            trainer = pl.Trainer(
+                callbacks=callbacks, devices=[args.device], **config["trainer"]
+            )
 
             trainer.fit(
                 model,

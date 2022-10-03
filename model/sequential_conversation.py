@@ -343,7 +343,7 @@ class SequentialConversationModel(pl.LightningModule):
             timestep_dialogue_timestep: Tensor = dialogue_timestep[timestep].squeeze(1)
 
             # Get the input speech features for the current timestep
-            input_speech_features = speech_features[timestep].squeeze(1).clone()
+            input_speech_features = speech_features[timestep].squeeze(1)
 
             # Do we need to autoregress from the previous timestep?
             timestep_autoregress_mask: Tensor = autoregress_mask[timestep].squeeze(1)
@@ -412,7 +412,7 @@ class SequentialConversationModel(pl.LightningModule):
 
                 # Save the attention scores
                 all_attention_scores[timestep_predict_mask, timestep_outputs_idx] = (
-                    attention_scores.detach().clone().type(all_attention_scores.dtype)
+                    attention_scores.type(all_attention_scores.dtype)
                 )
 
                 all_attention_score_len[
@@ -422,7 +422,7 @@ class SequentialConversationModel(pl.LightningModule):
                 # Increment the indices we used by 1
                 outputs_idx[timestep_predict_mask] += 1
 
-                previous_output = model_output.detach().clone()
+                previous_output = model_output.detach()
             else:
                 previous_output = None
 

@@ -7,14 +7,14 @@ def train_subparser(subparsers):
     )
 
     lr_subparser.add_argument(
-        "--dataset",
+        "--dataset-dir",
         type=str,
         required=True,
-        help="A CSV file containing dialogue",
+        help="Path to a directory with dialogue dataset features",
     )
 
     lr_subparser.add_argument(
-        "--embeddings_dir",
+        "--embeddings-dir",
         type=str,
         required=True,
         help="Path to a directory with word embedings extracted from the dataset",
@@ -33,10 +33,10 @@ def train_subparser(subparsers):
     )
 
     train_subparser.add_argument(
-        "--dataset",
+        "--dataset-dir",
         type=str,
         required=True,
-        help="A CSV file containing dialogue",
+        help="Path to a directory with dialogue dataset features",
     )
 
     train_subparser.add_argument(
