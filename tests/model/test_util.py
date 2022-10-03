@@ -4,6 +4,52 @@ from torch import Tensor
 import torch
 
 
+class TestGetEmbeddingsSubsequence(unittest.TestCase):
+    def test_get_hidden_subsequence(self):
+        embeddings_all = torch.arange(10).repeat(3, 1).unsqueeze(2).repeat(1, 1, 3)
+        start = torch.LongTensor([2, 4, 5])
+        end = torch.LongTensor([7, 5, 9])
+
+        embeddings, embeddings_len = util.get_embeddings_subsequence(
+            embeddings=embeddings_all, subsequence_start=start, subsequence_end=end
+        )
+
+        output = torch.tensor(
+            [
+                [[2, 2, 2], [3, 3, 3], [4, 4, 4], [5, 5, 5], [6, 6, 6]],
+                [[4, 4, 4], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                [[5, 5, 5], [6, 6, 6], [7, 7, 7], [8, 8, 8], [0, 0, 0]],
+            ]
+        )
+
+        output_len = torch.LongTensor([5, 1, 4])
+
+        self.assertTrue(torch.equal(embeddings, output))
+        self.assertTrue(torch.equal(embeddings_len, output_len))
+
+    def test_get_hidden_subsequence_zero(self):
+        embeddings_all = torch.arange(10).repeat(3, 1).unsqueeze(2).repeat(1, 1, 3)
+        start = torch.LongTensor([2, 4, 0])
+        end = torch.LongTensor([7, 5, 0])
+
+        embeddings, embeddings_len = util.get_embeddings_subsequence(
+            embeddings=embeddings_all, subsequence_start=start, subsequence_end=end
+        )
+
+        output = torch.tensor(
+            [
+                [[2, 2, 2], [3, 3, 3], [4, 4, 4], [5, 5, 5], [6, 6, 6]],
+                [[4, 4, 4], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+            ]
+        )
+
+        output_len = torch.LongTensor([5, 1, 0])
+
+        self.assertTrue(torch.equal(embeddings, output))
+        self.assertTrue(torch.equal(embeddings_len, output_len))
+
+
 class TestGetHiddenVector(unittest.TestCase):
     def test_get_hidden_vector_1_layer(self):
         hidden = util.init_hidden(

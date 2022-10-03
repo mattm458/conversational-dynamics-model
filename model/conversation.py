@@ -30,6 +30,7 @@ class ConversationModel(nn.Module):
         embedding_attention_dropout: float,
         has_speaker: bool,
         has_embeddings: bool,
+        decoder_activation: str,
     ):
         super().__init__()
 
@@ -73,6 +74,7 @@ class ConversationModel(nn.Module):
                     output_dim=outputs_per_decoder,
                     num_layers=decoder_num_layers,
                     attention_dropout=decoder_attention_dropout,
+                    activation=decoder_activation,
                 )
                 for _ in range(num_decoders)
             ]

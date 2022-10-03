@@ -76,7 +76,7 @@ class Attention(nn.Module):
         att_applied = torch.bmm(score, history)
         att_applied = att_applied.squeeze(1)
 
-        return att_applied, score_out
+        return att_applied, score_out.detach()
 
 
 class Decoder(nn.Module):
@@ -91,6 +91,7 @@ class Decoder(nn.Module):
         output_dim: int,
         hidden_dim: int,
         num_layers: int,
+        activation: str,
     ):
         super().__init__()
 
@@ -110,7 +111,12 @@ class Decoder(nn.Module):
 
         self.dropout = nn.Dropout(decoder_dropout)
 
-        self.linear = nn.Sequential(nn.Linear(hidden_dim, output_dim), nn.Tanh())
+        linear_arr = [nn.Linear(hidden_dim, output_dim)]
+        if activation == "tanh":
+            print("Decoder: Tanh activation")
+            linear_arr.append(nn.Tanh())
+
+        self.linear = nn.Sequential(*linear_arr)
 
     def forward(
         self,
@@ -148,7 +154,7 @@ class Decoder(nn.Module):
 
         x = self.linear(x)
 
-        return x, scores.detach().clone()
+        return x, scores
 
 
 # class MelEncoder(nn.Module):

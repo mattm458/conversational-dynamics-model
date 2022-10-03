@@ -5,6 +5,9 @@
 *.ipynb
 vosk-model*
 
+lightning_logs/
+*.ckpt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

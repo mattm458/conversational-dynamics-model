@@ -49,8 +49,12 @@ class SequentialConversationModel(pl.LightningModule):
             "rate_norm",
         ],
         lr: float = 0.01,
+        decoder_activation: str = "tanh",
     ):
         super().__init__()
+
+        self.save_hyperparameters()
+
         self.num_speech_features: int = num_speech_features
         self.encoder_out_dim: int = encoder_out_dim
         self.encoder_num_layers: int = encoder_num_layers
@@ -87,6 +91,7 @@ class SequentialConversationModel(pl.LightningModule):
             embedding_attention_dropout=embedding_attention_dropout,
             has_speaker=has_speaker,
             has_embeddings=has_embeddings,
+            decoder_activation=decoder_activation,
         )
 
     def forward(
@@ -305,6 +310,17 @@ class SequentialConversationModel(pl.LightningModule):
             (batch_size, max(us_count)), device=device, dtype=torch.long
         )
 
+        embeddings_subsequence_start = torch.split(
+            embeddings_subsequence_start, 1, dim=1
+        )
+        embeddings_subsequence_end = torch.split(embeddings_subsequence_end, 1, dim=1)
+        predict_mask = torch.split(predict_mask, 1, dim=1)
+        dialogue_timestep = torch.split(dialogue_timestep, 1, dim=1)
+        speech_features = torch.split(speech_features, 1, dim=1)
+        autoregress_mask = torch.split(autoregress_mask, 1, dim=1)
+        speaker = torch.split(speaker, 1, dim=1)
+        encode_mask = torch.split(encode_mask, 1, dim=1)
+
         # Iterate over all the input steps
         for timestep in range(num_input_steps):
             # Get the embeddings subsequence for the current timestep
@@ -313,8 +329,8 @@ class SequentialConversationModel(pl.LightningModule):
                 embeddings_subsequence_len,
             ) = get_embeddings_subsequence(
                 embeddings,
-                embeddings_subsequence_start[:, timestep],
-                embeddings_subsequence_end[:, timestep],
+                embeddings_subsequence_start[timestep].squeeze(1),
+                embeddings_subsequence_end[timestep].squeeze(1),
             )
 
             # Create the timestep batch mask. This mask contains True if the
@@ -323,14 +339,14 @@ class SequentialConversationModel(pl.LightningModule):
             timestep_batch_mask: Tensor = (
                 torch.full((batch_size,), timestep, device=device) < speech_features_len
             )
-            timestep_predict_mask: Tensor = predict_mask[:, timestep]
-            timestep_dialogue_timestep: Tensor = dialogue_timestep[:, timestep]
+            timestep_predict_mask: Tensor = predict_mask[timestep].squeeze(1)
+            timestep_dialogue_timestep: Tensor = dialogue_timestep[timestep].squeeze(1)
 
             # Get the input speech features for the current timestep
-            input_speech_features = speech_features[:, timestep].clone()
+            input_speech_features = speech_features[timestep].squeeze(1).clone()
 
             # Do we need to autoregress from the previous timestep?
-            timestep_autoregress_mask: Tensor = autoregress_mask[:, timestep]
+            timestep_autoregress_mask: Tensor = autoregress_mask[timestep].squeeze(1)
             if (
                 previous_output is not None
                 and timestep_autoregress_mask.any()
@@ -362,12 +378,12 @@ class SequentialConversationModel(pl.LightningModule):
             # Perform one step through the model
             model_output, attention_scores, history_seq_len = self(
                 speech_features=input_speech_features,
-                speaker=speaker[:, timestep],
+                speaker=speaker[timestep].squeeze(1),
                 encoder_hidden=encoder_hidden,
                 decoder_hidden=decoder_hidden,
                 history=history,
                 batch_mask=timestep_batch_mask,
-                encode_mask=encode_mask[:, timestep],
+                encode_mask=encode_mask[timestep].squeeze(1),
                 predict_mask=timestep_predict_mask,
                 dialogue_timestep=timestep_dialogue_timestep,
                 embeddings=embeddings_subsequence,
@@ -410,7 +426,7 @@ class SequentialConversationModel(pl.LightningModule):
             else:
                 previous_output = None
 
-            previous_predict_mask = predict_mask[:, timestep]
+            previous_predict_mask = predict_mask[timestep].squeeze(1)
 
         return all_outputs, all_attention_scores, all_attention_score_len
 

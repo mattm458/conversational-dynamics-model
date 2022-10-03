@@ -5,23 +5,13 @@ import time
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.profilers import PyTorchProfiler
 from sklearn.model_selection import train_test_split
 from torch.utils.data.dataloader import DataLoader
 
 from dataset import ConversationDataset, collate_fn
 from model.sequential_conversation import SequentialConversationModel
-
-
-FEATURES = [
-    "pitch_mean_norm_clip",
-    "pitch_range_norm_clip",
-    "intensity_mean_norm_clip",
-    "jitter_norm_clip",
-    "shimmer_norm_clip",
-    "nhr_norm_clip",
-    "rate_norm_clip",
-]
 
 if __name__ == "__main__":
     from util.args import args
@@ -40,7 +30,7 @@ if __name__ == "__main__":
         # Evaluate a trained model on a validation or test set, and output the results.
         pass
 
-    elif args.mode == "train":
+    elif args.mode == "train" or args.mode == "lr":
         # Train a new model from scratch, or resume training from a checkpoint.
         df = pd.read_csv(args.dataset)
         ses_ids = df.ses_id.unique()
@@ -57,64 +47,66 @@ if __name__ == "__main__":
             df,
             ses_ids=train_ses,
             embeddings_dir=args.embeddings_dir,
-            speech_feature_keys=FEATURES,
+            speech_feature_keys=config["speech_feature_keys"],
         )
         train_dataloader = DataLoader(
             dataset=train_dataset,
-            batch_size=32,
             collate_fn=collate_fn,
-            persistent_workers=True,
-            num_workers=16,
             shuffle=True,
-            pin_memory=True,
             drop_last=True,
+            **config["dataloader"],
         )
 
         val_dataset = ConversationDataset(
             df,
             ses_ids=val_ses,
             embeddings_dir=args.embeddings_dir,
-            speech_feature_keys=FEATURES,
+            speech_feature_keys=config["speech_feature_keys"],
         )
         val_dataloader = DataLoader(
             dataset=val_dataset,
-            batch_size=32,
             collate_fn=collate_fn,
-            persistent_workers=True,
-            num_workers=16,
-            pin_memory=True,
+            **config["dataloader"],
         )
 
         model = SequentialConversationModel(
-            speech_feature_keys=FEATURES,
-            teacher_forcing=0.5,
-            lr=0.008,
+            speech_feature_keys=config["speech_feature_keys"],
+            num_speech_features=len(config["speech_feature_keys"]),
+            **config["model"],
         )
 
-        trainer = pl.Trainer(
-            devices=[0],
-            precision=16,
-            accelerator="gpu",
-            callbacks=[
+        if args.mode == "lr":
+            trainer = pl.Trainer(auto_lr_find=True, **config["trainer"])
+
+            trainer.tune(
+                model,
+                train_dataloaders=train_dataloader,
+                val_dataloaders=val_dataloader,
+            )
+        elif args.mode == "train":
+            callbacks = [
                 ModelCheckpoint(
                     save_top_k=10,
                     monitor="val_loss",
                     mode="min",
-                    filename="dialogue-{epoch:02d}-{val_loss:.2f}",
-                ),
-                EarlyStopping(monitor="val_loss", mode="min", patience=5),
-            ],
-        )
+                    filename="dialogue-{epoch:02d}-{val_loss:.5f}",
+                )
+            ]
 
-        trainer.fit(
-            model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader
-        )
-        # trainer = pl.Trainer(
-        #     auto_lr_find=True, devices=[0], precision=16, accelerator="gpu"
-        # )
-        # trainer.tune(
-        #     model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader
-        # )
+            if config["trainer_plugins"]["early_stopping"]["active"]:
+                callbacks.append(
+                    EarlyStopping(
+                        **config["trainer_plugins"]["early_stopping"]["params"]
+                    )
+                )
+
+            trainer = pl.Trainer(callbacks=callbacks, devices=[args.device], **config["trainer"])
+
+            trainer.fit(
+                model,
+                train_dataloaders=train_dataloader,
+                val_dataloaders=val_dataloader,
+            )
 
     elif args.mode == "torchscript":
         # Export the model to TorchScript
@@ -126,7 +118,9 @@ if __name__ == "__main__":
         # Only optional for testing purposes during development
         if args.checkpoint is not None:
             model = SequentialConversationModel.load_from_checkpoint(
-                args.checkpoint, **config["model"]
+                args.checkpoint,
+                num_speech_features=len(config["speech_feature_keys"]),
+                **config["model"],
             )
         else:
             model = SequentialConversationModel(**config["model"])

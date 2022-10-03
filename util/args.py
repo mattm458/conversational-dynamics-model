@@ -2,6 +2,24 @@ import argparse
 
 
 def train_subparser(subparsers):
+    lr_subparser = subparsers.add_parser(
+        "lr", help="Find an appropriate learning rate for a model configuration"
+    )
+
+    lr_subparser.add_argument(
+        "--dataset",
+        type=str,
+        required=True,
+        help="A CSV file containing dialogue",
+    )
+
+    lr_subparser.add_argument(
+        "--embeddings_dir",
+        type=str,
+        required=True,
+        help="Path to a directory with word embedings extracted from the dataset",
+    )
+
     train_subparser = subparsers.add_parser(
         "train", help="Train a neural entrainment model"
     )
@@ -22,10 +40,17 @@ def train_subparser(subparsers):
     )
 
     train_subparser.add_argument(
-        "--embeddings_dir",
+        "--embeddings-dir",
         type=str,
         required=True,
         help="Path to a directory with word embedings extracted from the dataset",
+    )
+
+    train_subparser.add_argument(
+        "--device",
+        type=int,
+        required=True,
+        help="The device to use for training",
     )
 
 
