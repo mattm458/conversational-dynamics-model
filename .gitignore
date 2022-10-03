@@ -5,6 +5,8 @@
 *.ipynb
 vosk-model*
 
+*.csv
+
 lightning_logs/
 *.ckpt
 
