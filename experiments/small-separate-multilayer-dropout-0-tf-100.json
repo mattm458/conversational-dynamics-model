@@ -1,0 +1,54 @@
+{
+    "speech_feature_keys": [
+        "pitch_mean_norm_clip",
+        "pitch_range_norm_clip",
+        "intensity_mean_norm_clip",
+        "jitter_norm_clip",
+        "shimmer_norm_clip",
+        "nhr_norm_clip",
+        "rate_norm_clip"
+    ],
+    "model": {
+        "encoder_out_dim": 32,
+        "encoder_num_layers": 2,
+        "encoder_dropout": 0.0,
+        "attention_dim": 32,
+        "decoder_out_dim": 16,
+        "decoder_num_layers": 1,
+        "decoder_dropout": 0.0,
+        "decoder_attention_dropout": 0.0,
+        "num_decoders": 7,
+        "outputs_per_decoder": 1,
+        "embedding_dim": 300,
+        "embedding_encoder_out_dim": 32,
+        "embedding_encoder_num_layers": 2,
+        "embedding_encoder_dropout": 0.0,
+        "embedding_attention_dim": 32,
+        "embedding_attention_dropout": 0.0,
+        "has_speaker": true,
+        "has_embeddings": true,
+        "teacher_forcing": 1.0,
+        "lr": 0.001,
+        "decoder_activation": "tanh"
+    },
+    "dataloader": {
+        "batch_size": 32,
+        "pin_memory": true,
+        "persistent_workers": true
+    },
+    "trainer": {
+        "accelerator": "gpu",
+        "precision": 16,
+        "max_epochs": -1
+    },
+    "trainer_plugins": {
+        "early_stopping": {
+            "active": true,
+            "params": {
+                "patience": 10,
+                "monitor": "val_loss",
+                "mode": "min"
+            }
+        }
+    }
+}
