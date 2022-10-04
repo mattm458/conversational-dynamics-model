@@ -53,6 +53,13 @@ def train_subparser(subparsers):
         help="The device to use for training",
     )
 
+    train_subparser.add_argument(
+        "--num-workers",
+        type=int,
+        default=3,
+        help="The number of dataloader workers",
+    )
+
 
 def test_subparser(subparsers):
     test_subparser = subparsers.add_parser(
