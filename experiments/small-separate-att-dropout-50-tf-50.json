@@ -16,7 +16,7 @@
         "decoder_out_dim": 16,
         "decoder_num_layers": 1,
         "decoder_dropout": 0.0,
-        "decoder_attention_dropout": 0.25,
+        "decoder_attention_dropout": 0.5,
         "num_decoders": 7,
         "outputs_per_decoder": 1,
         "embedding_dim": 300,
@@ -27,13 +27,12 @@
         "embedding_attention_dropout": 0.0,
         "has_speaker": true,
         "has_embeddings": true,
-        "teacher_forcing": 0.0,
+        "teacher_forcing": 0.5,
         "lr": 0.001,
         "decoder_activation": "tanh"
     },
     "dataloader": {
         "batch_size": 32,
-        "num_workers": 4,
         "pin_memory": true,
         "persistent_workers": true
     },
