@@ -53,6 +53,7 @@ if __name__ == "__main__":
         train_dataloader = DataLoader(
             dataset=train_dataset,
             collate_fn=collate_fn,
+            num_workers=args.num_workers,
             shuffle=True,
             drop_last=True,
             **config["dataloader"],
@@ -66,6 +67,7 @@ if __name__ == "__main__":
         )
         val_dataloader = DataLoader(
             dataset=val_dataset,
+            num_workers=args.num_workers,
             collate_fn=collate_fn,
             **config["dataloader"],
         )
@@ -102,7 +104,9 @@ if __name__ == "__main__":
                 )
 
             trainer = pl.Trainer(
-                callbacks=callbacks, devices=[args.device], **config["trainer"]
+                callbacks=callbacks,
+                devices=[args.device],
+                **config["trainer"],
             )
 
             trainer.fit(
