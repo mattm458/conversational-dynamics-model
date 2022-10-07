@@ -9,6 +9,7 @@ vosk-model*
 *.out
 
 lightning_logs/
+checkpoint_archives/
 *.ckpt
 
 # Byte-compiled / optimized / DLL files
