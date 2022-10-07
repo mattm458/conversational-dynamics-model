@@ -8,6 +8,10 @@ from torch.nn import functional as F
 def init_hidden(
     batch_size: int, hidden_dim: int, num_layers: int, device: device
 ) -> List[Tuple[Tensor, Tensor]]:
+    # This function creates a list of hidden layers for a custom multilayer
+    # LSTM. The output is a list of tuples (containing the hidden tensor and
+    # cell state tensor), where each element in the list corresponds to a layer
+    # in the LSTM. Element 0 is intended to be the lowest layer.
     return [
         (
             torch.zeros(batch_size, hidden_dim, device=device),
