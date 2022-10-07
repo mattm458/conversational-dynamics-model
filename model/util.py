@@ -71,6 +71,13 @@ def get_embeddings_subsequence(
 
 
 def get_hidden_vector(hidden: List[Tuple[Tensor, Tensor]], last: bool = True) -> Tensor:
+    # This function creates a tensor from the hidden state of a custom multilayer LSTM
+    # hidden state list. It can be run in one of two modes:
+    #
+    #   last = True:  Only return the last hidden layer (i.e., the hidden layer
+    #                 associated with the last layer).
+    #   last = False: Return a tensor containing the concatenation of the hidden
+    #                 layer from every layer of the LSTM.
     if last or len(hidden) == 1:
         return hidden[-1][0]
 
