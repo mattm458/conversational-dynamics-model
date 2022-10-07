@@ -1,8 +1,6 @@
 import matplotlib
 import pytorch_lightning as pl
 
-matplotlib.use("Agg")
-
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -142,7 +140,14 @@ class SequentialConversationModel(pl.LightningModule):
             us_count=y["us_count"],
         )
 
-        return outputs, attention_scores, attention_scores_len
+        return (
+            outputs,
+            attention_scores,
+            attention_scores_len,
+            y["speech_features"],
+            y["speech_features_len"],
+            y["speaker"],
+        )
 
     def validation_step(self, batch, batch_idx):
         X, y = batch
@@ -371,9 +376,16 @@ class SequentialConversationModel(pl.LightningModule):
                 )
 
                 # Apply the mask by assigning previously predicted speech features
-                input_speech_features[timestep_autoregress_mask] = previous_output[
-                    timestep_autoregress_mask[previous_predict_mask]
-                ].type(input_speech_features.dtype)
+                input_speech_features = input_speech_features.index_put(
+                    (
+                        torch.nonzero(
+                            timestep_autoregress_mask, as_tuple=False
+                        ).squeeze(-1),
+                    ),
+                    previous_output[
+                        timestep_autoregress_mask[previous_predict_mask]
+                    ].type(input_speech_features.dtype),
+                )
 
             # Perform one step through the model
             model_output, attention_scores, history_seq_len = self(
@@ -411,9 +423,9 @@ class SequentialConversationModel(pl.LightningModule):
                 )
 
                 # Save the attention scores
-                all_attention_scores[timestep_predict_mask, timestep_outputs_idx] = (
-                    attention_scores.type(all_attention_scores.dtype)
-                )
+                all_attention_scores[
+                    timestep_predict_mask, timestep_outputs_idx
+                ] = attention_scores.type(all_attention_scores.dtype)
 
                 all_attention_score_len[
                     timestep_predict_mask, timestep_outputs_idx
@@ -422,7 +434,7 @@ class SequentialConversationModel(pl.LightningModule):
                 # Increment the indices we used by 1
                 outputs_idx[timestep_predict_mask] += 1
 
-                previous_output = model_output.detach()
+                previous_output = model_output  # .detach()
             else:
                 previous_output = None
 
@@ -461,6 +473,8 @@ def plot_feature_attention(
     speech_features_len: Tensor,
     attention_len: Tensor,
 ) -> np.ndarray:
+    matplotlib.use("Agg")
+
     ATT = attention[batch_idx, : speech_features_len.max(), :, feature_idx]
     rows, columns = ATT.shape
     fig, axs = plt.subplots(ncols=1, nrows=rows, figsize=(10, 10))

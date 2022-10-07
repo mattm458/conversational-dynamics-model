@@ -6,6 +6,7 @@
 vosk-model*
 
 *.csv
+*.out
 
 lightning_logs/
 *.ckpt

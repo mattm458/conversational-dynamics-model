@@ -41,7 +41,7 @@ class ConversationDataset(Dataset):
         # Find out which of the speakers in the dialogue (A or B) is considered the
         # "them" speaker - the human half of the conversation that the model is attempting
         # to respond to
-        speaker_them: str = ses_data['speaker'][0]
+        speaker_them: str = ses_data["speaker"][0]
 
         # Deal with embeddings - create a tensor of start/end indices for each
         # embeddings sequence in the session
@@ -60,7 +60,7 @@ class ConversationDataset(Dataset):
         # Keep track of the number of "us" turns there are in total
         us_count = 0
 
-        for i, speaker in enumerate(ses_data['speaker']):
+        for i, speaker in enumerate(ses_data["speaker"]):
             features_raw = [ses_data[f][i] for f in self.speech_feature_keys]
 
             if speaker == speaker_them:
@@ -73,6 +73,8 @@ class ConversationDataset(Dataset):
                 output_X["feature_encode_mask"].append(True)
                 output_X["predict_mask"].append(False)
                 output_X["autoregress_mask"].append(False)
+
+                output_y["speaker"].append([1.0, 0.0])
             else:
                 us_count += 1
 
@@ -91,6 +93,7 @@ class ConversationDataset(Dataset):
                 output_X["autoregress_mask"].extend([False, True])
 
                 output_y["speech_features"].append(features_raw)
+                output_y["speaker"].append([0.0, 1.0])
 
         output_X = dict(output_X)
         output_X["speech_features"] = FloatTensor(output_X["speech_features"])
@@ -108,6 +111,7 @@ class ConversationDataset(Dataset):
         output_y["speech_features"] = FloatTensor(output_y["speech_features"])
         output_y["speech_features_len"] = LongTensor([len(output_y["speech_features"])])
         output_y["us_count"] = LongTensor([us_count])
+        output_y["speaker"] = FloatTensor(output_y["speaker"])
 
         # Embeddings -------------------------------------------------------------
 
@@ -144,6 +148,7 @@ def collate_fn(
 
     speech_features_y = []
     speech_features_len_y = []
+    speaker_y = []
     us_count_y = []
 
     for X, y in batch:
@@ -162,7 +167,8 @@ def collate_fn(
 
         speech_features_y.append(y["speech_features"])
         speech_features_len_y.append(y["speech_features_len"])
-        us_count_y.append(y['us_count'])
+        us_count_y.append(y["us_count"])
+        speaker_y.append(y["speaker"])
 
     output_X = {
         "speech_features": nn.utils.rnn.pad_sequence(
@@ -197,7 +203,8 @@ def collate_fn(
             speech_features_y, batch_first=True
         ),
         "speech_features_len": torch.cat(speech_features_len_y),
-        "us_count": torch.cat(us_count_y)
+        "us_count": torch.cat(us_count_y),
+        "speaker": nn.utils.rnn.pad_sequence(speaker_y, batch_first=True),
     }
 
     return (output_X, output_y)
