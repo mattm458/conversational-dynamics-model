@@ -59,11 +59,16 @@ class TestGetHiddenVector(unittest.TestCase):
             device="cpu",
         )
 
+        # Change the contents for testing
+        hidden[-1][0][0] = 100.0
+
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=False)
 
-        # get_hidden_vector should return a 3x10 tensor
         self.assertIs(type(hidden_vector), Tensor)
+        
+        # get_hidden_vector should return a 3x10 tensor
         self.assertEqual(hidden_vector.shape, (3, 10))
+        self.assertTrue(torch.equal(hidden_vector, hidden[-1][0]))
 
     def test_get_hidden_vector_1_layer_last(self):
         hidden = util.init_hidden(
@@ -73,11 +78,16 @@ class TestGetHiddenVector(unittest.TestCase):
             device="cpu",
         )
 
+        # Change the contents for testing
+        hidden[-1][0][0] = 100.0
+
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=True)
 
-        # get_hidden_vector should return a 3x10
         self.assertIs(type(hidden_vector), Tensor)
+        
+        # get_hidden_vector should return a 3x10
         self.assertEqual(hidden_vector.shape, (3, 10))
+        self.assertTrue(torch.equal(hidden_vector, hidden[-1][0]))
 
     def test_get_hidden_vector_multilayer_last(self):
         hidden = util.init_hidden(
@@ -87,15 +97,17 @@ class TestGetHiddenVector(unittest.TestCase):
             device="cpu",
         )
 
-        hidden[0][0][0] = 100.0
+        # Mark the last layer so we can recognize it later
+        hidden[-1][0][0] = 100.0
 
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=True)
 
+        self.assertIs(type(hidden_vector), Tensor)
+
         # get_hidden_vector should return a 3x10 tensor that is the
         # last tensor in hidden_vector
-        self.assertIs(type(hidden_vector), Tensor)
         self.assertEqual(hidden_vector.shape, (3, 10))
-        self.assertTrue(torch.equal(hidden_vector, hidden[0][0]))
+        self.assertTrue(torch.equal(hidden_vector, hidden[-1][0]))
 
     def test_get_hidden_vector_multilayer(self):
         hidden = util.init_hidden(
@@ -105,13 +117,19 @@ class TestGetHiddenVector(unittest.TestCase):
             device="cpu",
         )
 
+        # Change the contents for testing
+        hidden[-1][0][0] = 100.0
+
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=False)
 
-        print(hidden_vector.shape)
+        # Replicate the expected behavior of get_hidden_vector
+        expected = torch.cat([h for h, _ in hidden], dim=1)
+
+        self.assertIs(type(hidden_vector), Tensor)
 
         # get_hidden_vector should return a 3x20 tensor
-        self.assertIs(type(hidden_vector), Tensor)
         self.assertEqual(hidden_vector.shape, (3, 20))
+        self.assertTrue(torch.equal(expected, hidden_vector))
 
 
 class TestInitHiddenLayer(unittest.TestCase):
