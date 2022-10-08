@@ -5,6 +5,32 @@ from torch import Tensor, device
 from torch.nn import functional as F
 
 
+def autoregress_feature(
+    input_speech_features: Tensor,
+    previous_output: Tensor,
+    timestep_autoregress_mask: Tensor,
+    teacher_forcing: float,
+):
+    batch_size, num_features = input_speech_features.shape
+    device = input_speech_features.device
+
+    teacher_forcing_mask = torch.rand((batch_size, num_features), device=device)
+    teacher_forcing_mask = teacher_forcing_mask < teacher_forcing
+
+    feature_autoregress_mask = (
+        timestep_autoregress_mask.unsqueeze(1) * ~teacher_forcing_mask
+    )
+
+    feature_timestep_mask = feature_autoregress_mask[timestep_autoregress_mask]
+    feature_autoregress_idx = torch.nonzero(feature_autoregress_mask, as_tuple=True)
+
+    input_speech_features = input_speech_features.index_put(
+        feature_autoregress_idx, previous_output[feature_timestep_mask]
+    )
+
+    return input_speech_features
+
+
 def history_expand(
     history: Tensor, new_values: Tensor, batch_idx: Tensor, timestep_idx: Tensor
 ) -> Tensor:
@@ -20,8 +46,7 @@ def history_expand(
         raise Exception(
             f"Batch indices for history expansion contains a value larger than history batch size ({batch_idx.max()} > {batch_size}"
         )
-    
-    
+
     return history.index_put(indices=(batch_idx, timestep_idx), values=new_values)
 
 

@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from model.conversation import ConversationModel
 from model.util import (
+    autoregress_feature,
     get_embeddings_subsequence,
     history_expand,
     init_hidden,
@@ -409,34 +410,11 @@ class SequentialConversationModel(pl.LightningModule):
                 and timestep_autoregress_mask.any()
                 and previous_predict_mask.any()
             ):
-                # If so, construct a random mask for teacher forcing.
-                # Values above the threshhold mean we will keep the ground-truth
-                # input speech features. Values below the threshhold mean we will
-                # replace the ground-truth input speech features with values
-                # predicted at the previous timestep.
-                teacher_forcing_mask = (
-                    torch.rand(timestep_autoregress_mask.shape, device=device)
-                    < teacher_forcing
-                )
-
-                # Construct the final autoregression mask. Values of True mean
-                # we will replace the ground-truth feature value (i.e., we
-                # autoregress), while values of False mean we will keep the
-                # ground-truth feature value (i.e., we teacher force)
-                timestep_autoregress_mask = (
-                    timestep_autoregress_mask * ~teacher_forcing_mask
-                )
-
-                # Apply the mask by assigning previously predicted speech features
-                input_speech_features = input_speech_features.index_put(
-                    (
-                        torch.nonzero(
-                            timestep_autoregress_mask, as_tuple=False
-                        ).squeeze(-1),
-                    ),
-                    previous_output[
-                        timestep_autoregress_mask[previous_predict_mask]
-                    ].type(input_speech_features.dtype),
+                input_speech_features = autoregress_feature(
+                    input_speech_features=input_speech_features,
+                    previous_output=previous_output,
+                    timestep_autoregress_mask=timestep_autoregress_mask,
+                    teacher_forcing=teacher_forcing,
                 )
 
             # Perform one step through the model
