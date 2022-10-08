@@ -104,6 +104,9 @@ class SequentialConversationModel(pl.LightningModule):
 
         self.speech_feature_keys = speech_feature_keys
 
+        self.num_decoders = num_decoders
+        self.outputs_per_decoder = outputs_per_decoder
+
         self.lr = lr
 
         self.conversation_model = ConversationModel(
@@ -316,7 +319,7 @@ class SequentialConversationModel(pl.LightningModule):
                 num_layers=self.decoder_num_layers,
                 device=device,
             )
-            for _ in range(7)
+            for _ in range(self.num_decoders)
         ]
 
         # Set up a blank history tensor to accumulate encoded features
