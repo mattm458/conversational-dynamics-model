@@ -331,7 +331,7 @@ class SequentialConversationModel(pl.LightningModule):
         # Contains the previous output of the model, used for autoregressive training
         previous_output: Optional[Tensor] = None
 
-        # Contains a mask showing which conversations in the batch had output at the
+        # Contains a mask showing which dialogues in the batch had output at the
         # previous timestep. This allows us to determine if we need to encode anything
         # in `previous_output`.
         previous_predict_mask: Tensor = predict_mask[:, 0]
@@ -342,8 +342,8 @@ class SequentialConversationModel(pl.LightningModule):
             device=device,
         )
         # Contains the index at which new outputs should be saved in `all_outputs`.
-        # Not all conversations in the batch will save to the output tensor at once,
-        # so this allows us to manage it on a conversation-by-conversation basis
+        # Not all dialogues in the batch will save to the output tensor at once,
+        # so this allows us to manage it on a dialogue-by-dialogue basis
         outputs_idx: Tensor = torch.zeros(batch_size, dtype=torch.long, device=device)
 
         # A tensor that collects all attention scores from the model across all timesteps
@@ -357,10 +357,13 @@ class SequentialConversationModel(pl.LightningModule):
             device=device,
         )
 
+        # Contains the lengths of the attention score sequences within each dialogue
         all_attention_score_len = torch.zeros(
             (batch_size, max(us_count)), device=device, dtype=torch.long
         )
 
+        # Split important tensors along the timestep dimension. This allows us to access
+        # their contents easily within the main loop
         embeddings_subsequence_start = torch.split(
             embeddings_subsequence_start, 1, dim=1
         )
