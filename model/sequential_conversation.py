@@ -88,6 +88,7 @@ class SequentialConversationModel(pl.LightningModule):
             "rate_norm",
         ],
         lr: float = 0.01,
+        weight_decay: float = 0.0,
         decoder_activation: str = "tanh",
     ):
         super().__init__()
@@ -112,6 +113,7 @@ class SequentialConversationModel(pl.LightningModule):
         self.outputs_per_decoder = outputs_per_decoder
 
         self.lr = lr
+        self.weight_decay = weight_decay
 
         self.conversation_model = ConversationModel(
             num_speech_features=num_speech_features,
@@ -279,7 +281,9 @@ class SequentialConversationModel(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
+        return torch.optim.Adam(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
 
     def sequence(
         self,
