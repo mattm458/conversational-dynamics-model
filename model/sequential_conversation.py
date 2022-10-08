@@ -485,3 +485,20 @@ class SequentialConversationModel(pl.LightningModule):
             previous_predict_mask = predict_mask[timestep].squeeze(1)
 
         return all_outputs, all_attention_scores, all_attention_score_len
+
+    def validation_epoch_end(self, outputs):
+        output = outputs[0]
+
+        for i, feature in enumerate(self.speech_feature_keys):
+            self.logger.experiment.add_image(
+                f"val_alignment_{feature}",
+                plot_feature_attention(
+                    feature_idx=i,
+                    attention=output["attention_scores"].cpu(),
+                    batch_idx=0,
+                    speech_features_len=output["speech_features_len"][0].cpu(),
+                    attention_len=output["attention_scores_len"][0].cpu(),
+                ),
+                self.current_epoch,
+                dataformats="HWC",
+            )
