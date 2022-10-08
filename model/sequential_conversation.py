@@ -14,6 +14,43 @@ from model.conversation import ConversationModel
 from model.util import get_embeddings_subsequence, init_hidden, lengths_to_mask
 
 
+def save_figure_to_numpy(fig):
+    data = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (4,))[:, :, :3]
+    return data
+
+
+def plot_feature_attention(
+    feature_idx: int,
+    attention: Tensor,
+    batch_idx: int,
+    speech_features_len: Tensor,
+    attention_len: Tensor,
+) -> np.ndarray:
+    matplotlib.use("Agg")
+
+    ATT = attention[batch_idx, : speech_features_len.max(), :, feature_idx]
+    rows, columns = ATT.shape
+    fig, axs = plt.subplots(ncols=1, nrows=rows, figsize=(10, 10))
+
+    for i, (scores, length) in enumerate(zip(ATT, attention_len)):
+        ax = axs[i]
+        ax.imshow(
+            scores[:length].unsqueeze(0),
+            interpolation="nearest",
+            aspect="auto",
+            vmin=0 if i == 0 else None,
+            vmax=1 if i == 0 else None,
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    fig.canvas.draw()
+    data = save_figure_to_numpy(fig)
+    plt.close(fig)
+    return data
+
+
 class SequentialConversationModel(pl.LightningModule):
     def __init__(
         self,
@@ -105,7 +142,13 @@ class SequentialConversationModel(pl.LightningModule):
         speaker: Optional[Tensor] = None,
         embeddings: Optional[Tensor] = None,
         embeddings_len: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    ) -> Tuple[
+        Optional[Tensor],
+        Optional[List[Tuple[Tensor, Tensor]]],
+        Optional[List[List[Tuple[Tensor, Tensor]]]],
+        Optional[Tensor],
+        Optional[Tensor],
+    ]:
         # Pass through all arguments to the wrapped conversation model
         return self.conversation_model(
             speech_features=speech_features,
@@ -388,7 +431,14 @@ class SequentialConversationModel(pl.LightningModule):
                 )
 
             # Perform one step through the model
-            model_output, attention_scores, history_seq_len = self(
+            (
+                model_output,
+                encoder_hidden,
+                decoder_hidden,
+                history,
+                history_seq_len,
+                attention_scores,
+            ) = self(
                 speech_features=input_speech_features,
                 speaker=speaker[timestep].squeeze(1),
                 encoder_hidden=encoder_hidden,
@@ -441,57 +491,3 @@ class SequentialConversationModel(pl.LightningModule):
             previous_predict_mask = predict_mask[timestep].squeeze(1)
 
         return all_outputs, all_attention_scores, all_attention_score_len
-
-    def validation_epoch_end(self, outputs):
-        output = outputs[0]
-
-        for i, feature in enumerate(self.speech_feature_keys):
-            self.logger.experiment.add_image(
-                f"val_alignment_{feature}",
-                plot_feature_attention(
-                    feature_idx=i,
-                    attention=output["attention_scores"].cpu(),
-                    batch_idx=0,
-                    speech_features_len=output["speech_features_len"][0].cpu(),
-                    attention_len=output["attention_scores_len"][0].cpu(),
-                ),
-                self.current_epoch,
-                dataformats="HWC",
-            )
-
-
-def save_figure_to_numpy(fig):
-    data = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (4,))[:, :, :3]
-    return data
-
-
-def plot_feature_attention(
-    feature_idx: int,
-    attention: Tensor,
-    batch_idx: int,
-    speech_features_len: Tensor,
-    attention_len: Tensor,
-) -> np.ndarray:
-    matplotlib.use("Agg")
-
-    ATT = attention[batch_idx, : speech_features_len.max(), :, feature_idx]
-    rows, columns = ATT.shape
-    fig, axs = plt.subplots(ncols=1, nrows=rows, figsize=(10, 10))
-
-    for i, (scores, length) in enumerate(zip(ATT, attention_len)):
-        ax = axs[i]
-        ax.imshow(
-            scores[:length].unsqueeze(0),
-            interpolation="nearest",
-            aspect="auto",
-            vmin=0 if i == 0 else None,
-            vmax=1 if i == 0 else None,
-        )
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    fig.canvas.draw()
-    data = save_figure_to_numpy(fig)
-    plt.close(fig)
-    return data

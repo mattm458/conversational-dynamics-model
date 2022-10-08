@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 import torch
-from torch import Tensor, nn
+from torch import LongTensor, Tensor, nn
 
 from model.util import lengths_to_mask
 
@@ -21,8 +21,8 @@ class Encoder(nn.Module):
         self,
         encoder_input: Tensor,
         hidden: List[Tuple[Tensor, Tensor]],
-        mask: Tensor,
-    ) -> Tensor:
+        hidden_idx: LongTensor,
+    ) -> Tuple[Tensor, List[Tuple[Tensor, Tensor]]]:
         if len(hidden) != len(self.rnn):
             raise Exception(
                 "Number of hidden tensors must equal the number of RNN layers!"
@@ -30,19 +30,25 @@ class Encoder(nn.Module):
 
         x = encoder_input
 
+        new_hidden: List[Tuple[Tensor, Tensor]] = []
+
         for i, rnn in enumerate(self.rnn):
             h, c = hidden[i]
 
-            h_out, c_out = rnn(x, (h[mask], c[mask]))
+            h_out, c_out = rnn(x, (h[hidden_idx], c[hidden_idx]))
             x = h_out
 
             if i < (len(self.rnn) - 1):
                 x = self.dropout(x)
 
-            h[mask] = h_out.type(h.dtype)
-            c[mask] = c_out.type(h.dtype)
+            new_hidden.append(
+                (
+                    h.index_copy(0, hidden_idx, h_out.type(h.dtype)),
+                    c.index_copy(0, hidden_idx, c_out.type(c.dtype)),
+                )
+            )
 
-        return x
+        return x, new_hidden
 
 
 class Attention(nn.Module):
@@ -125,8 +131,8 @@ class Decoder(nn.Module):
         attention_context: Tensor,
         additional_decoder_input: List[Tensor],
         hidden: List[Tuple[Tensor, Tensor]],
-        batch_idx: Tensor,
-    ):
+        hidden_idx: Tensor,
+    ) -> Tuple[Tensor, List[Tuple[Tensor, Tensor]], Tensor]:
         if len(hidden) != self.num_layers:
             raise Exception(
                 "Number of hidden tensors must equal the number of RNN layers!"
@@ -139,19 +145,23 @@ class Decoder(nn.Module):
         )
 
         x = torch.cat([encoded_att] + additional_decoder_input, dim=-1)
+        new_hidden: List[Tuple[Tensor, Tensor]] = []
 
         for i, rnn in enumerate(self.rnn):
             h, c = hidden[i]
 
-            h_out, c_out = rnn(x, (h[batch_idx], c[batch_idx]))
+            h_out, c_out = rnn(x, (h[hidden_idx], c[hidden_idx]))
             x = h_out
 
             if i < (len(self.rnn) - 1):
                 x = self.dropout(x)
 
-            h[batch_idx] = h_out.type(h.dtype)
-            c[batch_idx] = c_out.type(c.dtype)
-
+            new_hidden.append(
+                (
+                    h.index_copy(0, hidden_idx, h_out.type(h.dtype)),
+                    c.index_copy(0, hidden_idx, c_out.type(c.dtype)),
+                )
+            )
         x = self.linear(x)
 
-        return x, scores
+        return x, new_hidden, scores

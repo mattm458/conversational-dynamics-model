@@ -4,6 +4,37 @@ from torch import Tensor
 import torch
 
 
+class TestHistoryExpand(unittest.TestCase):
+    def test_history_expand(self):
+        # Test the ability to add new timestep data to a dialogue history tensor
+
+        # Create fake history, new values to add, and locations to put them
+        history = torch.zeros((3, 4, 2))
+        new_values = torch.ones((2, 2))
+        batch_idx = torch.LongTensor([0, 2])
+        timestep_idx = torch.LongTensor([1, 2])
+
+        new_history = util.history_expand(
+            history=history,
+            new_values=new_values,
+            batch_idx=batch_idx,
+            timestep_idx=timestep_idx,
+        )
+
+        # Hardcode our expected output. Note the indices from batch_idx correspond
+        # with the location of 1s along the first dimension, and indices from
+        # timestep_idx correspond with the location of 1s along the second dimension
+        expected_history = torch.tensor(
+            [
+                [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+                [[0.0, 0.0], [0.0, 0.0], [1.0, 1.0], [0.0, 0.0]],
+            ]
+        )
+
+        self.assertTrue(torch.equal(new_history, expected_history))
+
+
 class TestGetEmbeddingsSubsequence(unittest.TestCase):
     def test_get_embeddings_subsequence(self):
         # Tests the ability to retrieve an embedding subsequence from a larger

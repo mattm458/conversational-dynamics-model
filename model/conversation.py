@@ -4,7 +4,7 @@ import torch
 from torch import Tensor, nn
 
 from model.components import Decoder, Encoder
-from model.util import get_hidden_vector
+from model.util import get_hidden_vector, history_expand
 from model.words import EmbeddingEncoder
 
 
@@ -93,7 +93,17 @@ class ConversationModel(nn.Module):
         speaker: Optional[Tensor] = None,
         embeddings: Optional[Tensor] = None,
         embeddings_len: Optional[Tensor] = None,
-    ) -> Tuple[Optional[Tensor], Optional[Tensor]]:
+    ) -> Tuple[
+        Optional[Tensor],
+        Optional[List[Tuple[Tensor, Tensor]]],
+        Optional[List[List[Tuple[Tensor, Tensor]]]],
+        Optional[Tensor],
+        Optional[Tensor],
+        Optional[Tensor],
+    ]:
+        encode_mask_idx = torch.arange(len(encode_mask), device=encode_mask.device)[
+            encode_mask
+        ]
 
         # If we are encoding embeddings, do it now
         embeddings_encoded: Optional[Tensor] = None
@@ -121,12 +131,17 @@ class ConversationModel(nn.Module):
                 encoder_in.append(embeddings_encoded[embeddings_encode_mask])
 
             encoder_in: Tensor = torch.cat(encoder_in, dim=1)
-            encoded = self.encoder(
-                encoder_input=encoder_in, hidden=encoder_hidden, mask=encode_mask
+            encoded, encoder_hidden = self.encoder(
+                encoder_input=encoder_in,
+                hidden=encoder_hidden,
+                hidden_idx=encode_mask_idx,
             )
 
-            history[encode_mask, dialogue_timestep[encode_mask]] = encoded.type(
-                history.dtype
+            history = history_expand(
+                history=history,
+                new_values=encoded.type(history.dtype),
+                batch_idx=encode_mask_idx,
+                timestep_idx=dialogue_timestep[encode_mask],
             )
 
         # If we are making any predictions, do them here
@@ -150,7 +165,14 @@ class ConversationModel(nn.Module):
             # In practice, there will either be `n` decoders for each of the `n`
             # output features, or there will be 1 decoder for all `n` output features.
             decoder_num = 0
+
+            new_decoder_hidden: List[List[Tuple[Tensor, Tensor]]] = []
+
             for h, decoder in zip(decoder_hidden, self.decoders):
+                predict_idx = torch.arange(
+                    len(predict_mask), device=predict_mask.device
+                )[predict_mask]
+
                 decoder_num += 1
                 # At minimum, the attention context vector contains the current
                 # hidden state of the decoder
@@ -174,22 +196,31 @@ class ConversationModel(nn.Module):
 
                 attention_context: Tensor = torch.cat(attention_context, dim=-1)
 
-                decoded, scores = decoder(
+                decoded, new_hidden, scores = decoder(
                     encoded_seq=history_seq,
                     encoded_seq_len=history_seq_len,
                     attention_context=attention_context,
                     additional_decoder_input=additional_decoder_input,
                     hidden=h,
-                    batch_idx=predict_mask,
+                    hidden_idx=predict_idx,
                 )
 
                 outputs.append(decoded)
+                new_decoder_hidden.append(new_hidden)
                 attention_scores.append(scores.squeeze(-1))
 
+            decoder_hidden = new_decoder_hidden
             output = torch.cat(outputs, dim=-1)
             attention_scores: Tensor = nn.utils.rnn.pad_sequence(
                 attention_scores, batch_first=True
             )
             attention_scores = torch.permute(attention_scores, (1, 2, 0))
 
-        return output, attention_scores, history_seq_len
+        return (
+            output,
+            encoder_hidden,
+            decoder_hidden,
+            history,
+            history_seq_len,
+            attention_scores,
+        )

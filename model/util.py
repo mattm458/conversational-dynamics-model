@@ -5,6 +5,26 @@ from torch import Tensor, device
 from torch.nn import functional as F
 
 
+def history_expand(
+    history: Tensor, new_values: Tensor, batch_idx: Tensor, timestep_idx: Tensor
+) -> Tensor:
+    batch_size = history.shape[0]
+    num_new_values = new_values.shape[0]
+
+    if len(batch_idx) > batch_size:
+        raise Exception(
+            f"Number of new values ({num_new_values}) is greater than the history tensor batch size ({batch_size})!"
+        )
+
+    if batch_idx.max() > batch_size:
+        raise Exception(
+            f"Batch indices for history expansion contains a value larger than history batch size ({batch_idx.max()} > {batch_size}"
+        )
+    
+    
+    return history.index_put(indices=(batch_idx, timestep_idx), values=new_values)
+
+
 def init_hidden(
     batch_size: int, hidden_dim: int, num_layers: int, device: device
 ) -> List[Tuple[Tensor, Tensor]]:
