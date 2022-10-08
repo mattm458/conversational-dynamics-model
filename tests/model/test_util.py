@@ -15,11 +15,11 @@ class TestGetEmbeddingsSubsequence(unittest.TestCase):
         end = torch.LongTensor([7, 5, 9])
 
         embeddings, embeddings_len = util.get_embeddings_subsequence(
-            embeddings=embeddings_all, subsequence_start=start, subsequence_end=end
+            embeddings=embeddings_all, start=start, end=end
         )
 
         # Hardcode our expected output. Note the indices from the range tensor,
-        # and how they align with our expectations from the start and end index
+        # and how they align with our expectations from the start and end indices
         output = torch.tensor(
             [
                 [[2, 2, 2], [3, 3, 3], [4, 4, 4], [5, 5, 5], [6, 6, 6]],
@@ -38,7 +38,7 @@ class TestGetEmbeddingsSubsequence(unittest.TestCase):
 
     def test_get_embeddings_subsequence_zero(self):
         # Tests the ability to retrieve an embedding subsequence from a larger
-        # embedding tensor, when some subsequences in the batch are over
+        # embedding tensor, when some dialogues in the batch are over
         # and have no remaining embeddings.
 
         # Create fake embeddings and subsequence lengths
@@ -47,7 +47,7 @@ class TestGetEmbeddingsSubsequence(unittest.TestCase):
         end = torch.LongTensor([7, 5, 0])
 
         embeddings, embeddings_len = util.get_embeddings_subsequence(
-            embeddings=embeddings_all, subsequence_start=start, subsequence_end=end
+            embeddings=embeddings_all, start=start, end=end
         )
 
         # Hardcode our expected output. Note the sequence of zeros at the end,
@@ -63,6 +63,36 @@ class TestGetEmbeddingsSubsequence(unittest.TestCase):
         # Hardcode the lengths tensor. The last length shows that there is
         # no data in the last embedding subsequence.
         output_len = torch.LongTensor([5, 1, 0])
+
+        self.assertTrue(torch.equal(embeddings, output))
+        self.assertTrue(torch.equal(embeddings_len, output_len))
+
+    def test_get_embeddings_subsequence_start(self):
+        # Tests the ability to retrieve an embedding subsequence from a larger
+        # embedding tensor at the beginning when the start indices are all 0
+
+        # Create fake embeddings and subsequence lengths
+        embeddings_all = torch.arange(10).repeat(3, 1).unsqueeze(2).repeat(1, 1, 3)
+        start = torch.LongTensor([0, 0, 0])
+        end = torch.LongTensor([5, 3, 2])
+
+        embeddings, embeddings_len = util.get_embeddings_subsequence(
+            embeddings=embeddings_all, start=start, end=end
+        )
+
+        # Hardcode our expected output. Note the sequence of zeros at the end,
+        # and how this reflects the 0 start/end indices above.
+        output = torch.tensor(
+            [
+                [[0, 0, 0], [1, 1, 1], [2, 2, 2], [3, 3, 3], [4, 4, 4]],
+                [[0, 0, 0], [1, 1, 1], [2, 2, 2], [0, 0, 0], [0, 0, 0]],
+                [[0, 0, 0], [1, 1, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+            ]
+        )
+
+        # Hardcode the lengths tensor. The last length shows that there is
+        # no data in the last embedding subsequence.
+        output_len = torch.LongTensor([5, 3, 2])
 
         self.assertTrue(torch.equal(embeddings, output))
         self.assertTrue(torch.equal(embeddings_len, output_len))
@@ -83,7 +113,7 @@ class TestGetHiddenVector(unittest.TestCase):
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=False)
 
         self.assertIs(type(hidden_vector), Tensor)
-        
+
         # get_hidden_vector should return a 3x10 tensor
         self.assertEqual(hidden_vector.shape, (3, 10))
         self.assertTrue(torch.equal(hidden_vector, hidden[-1][0]))
@@ -102,7 +132,7 @@ class TestGetHiddenVector(unittest.TestCase):
         hidden_vector = util.get_hidden_vector(hidden=hidden, last=True)
 
         self.assertIs(type(hidden_vector), Tensor)
-        
+
         # get_hidden_vector should return a 3x10
         self.assertEqual(hidden_vector.shape, (3, 10))
         self.assertTrue(torch.equal(hidden_vector, hidden[-1][0]))

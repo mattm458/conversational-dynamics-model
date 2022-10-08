@@ -32,8 +32,8 @@ def lengths_to_mask(lengths: Tensor, max_size: int) -> Tensor:
 
 def get_embeddings_subsequence(
     embeddings: Tensor,
-    subsequence_start: Tensor,
-    subsequence_end: Tensor,
+    start: Tensor,
+    end: Tensor,
 ) -> Tuple[Tensor, Tensor]:
     # This function accepts three tensors:
     #
@@ -55,15 +55,22 @@ def get_embeddings_subsequence(
     #      is zero-padded to account for differences in subsequence
     #      lengths across the batch.
     #   2. The lengths of each subsequence
-    lengths = subsequence_end - subsequence_start
+
+    subsequence_start = torch.min(start[start > 0]) if torch.any(start > 0) else 0
+    subsequence_end = torch.max(end[end > 0])
+
+    start = torch.clip(start - subsequence_start, min=0)
+    end = torch.clip(end - subsequence_start, min=0)
+
+    lengths = end - start
     longest = lengths.max()
 
-    embeddings = torch.split(embeddings, 1, dim=0)
-    subsequence_start = torch.split(subsequence_start, 1, dim=0)
-    subsequence_end = torch.split(subsequence_end, 1, dim=0)
+    embeddings = torch.split(embeddings[:, subsequence_start:subsequence_end], 1, dim=0)
+    start = torch.split(start, 1, dim=0)
+    end = torch.split(end, 1, dim=0)
 
     embeddings_subsequence = []
-    for e, start, end in zip(embeddings, subsequence_start, subsequence_end):
+    for e, start, end in zip(embeddings, start, end):
         e = e.squeeze(0)[start:end]
         embeddings_subsequence.append(F.pad(e, (0, 0, 0, longest - e.shape[0])))
 
