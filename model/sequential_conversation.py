@@ -500,7 +500,7 @@ class SequentialConversationModel(pl.LightningModule):
                 # Increment the indices we used by 1
                 outputs_idx[timestep_predict_mask] += 1
 
-                previous_output = model_output  # .detach()
+                previous_output = model_output
             else:
                 previous_output = None
 
