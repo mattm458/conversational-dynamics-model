@@ -1,8 +1,6 @@
-import matplotlib
-import pytorch_lightning as pl
-
 from typing import List, Optional, Tuple
 
+import matplotlib
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -11,7 +9,12 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from model.conversation import ConversationModel
-from model.util import get_embeddings_subsequence, init_hidden, lengths_to_mask
+from model.util import (
+    get_embeddings_subsequence,
+    history_expand,
+    init_hidden,
+    lengths_to_mask,
+)
 
 
 def save_figure_to_numpy(fig):
@@ -464,13 +467,20 @@ class SequentialConversationModel(pl.LightningModule):
                 and attention_scores is not None
                 and history_seq_len is not None
             ):
+
                 # Get indices in the output tensor for saving
+                timestep_predict_batch_idx = torch.argwhere(
+                    timestep_predict_mask
+                ).squeeze(-1)
                 timestep_outputs_idx = outputs_idx[timestep_predict_mask]
 
                 # Save the output
-                all_outputs[
-                    timestep_predict_mask, timestep_outputs_idx
-                ] = model_output.type(all_outputs.dtype)
+                all_outputs = history_expand(
+                    history=all_outputs,
+                    new_values=model_output.type(all_outputs.dtype),
+                    batch_idx=timestep_predict_batch_idx,
+                    timestep_idx=timestep_outputs_idx,
+                )
 
                 # Pad the attention scores so they are long enough to fit in the tensor
                 attention_scores = F.pad(
