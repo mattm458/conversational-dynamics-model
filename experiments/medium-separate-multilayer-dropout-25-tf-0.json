@@ -29,6 +29,7 @@
         "has_embeddings": true,
         "teacher_forcing": 0.0,
         "lr": 0.001,
+        "weight_decay": 1e-6,
         "decoder_activation": "tanh"
     },
     "dataloader": {
