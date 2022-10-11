@@ -51,7 +51,7 @@ if __name__ == "__main__":
         )
 
         val_dataset = ConversationDataset(
-            ses_ids=val_ses,
+            ses_ids=val_ses_ids,
             features_dir=args.dataset_dir,
             embeddings_dir=args.embeddings_dir,
             speech_feature_keys=config["speech_feature_keys"],
