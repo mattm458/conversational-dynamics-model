@@ -42,7 +42,7 @@ if __name__ == "__main__":
             speech_feature_keys=config["speech_feature_keys"],
         )
         train_dataloader = DataLoader(
-            dataset=val_ses_ids,
+            dataset=train_dataset,
             collate_fn=collate_fn,
             num_workers=args.num_workers,
             shuffle=True,
