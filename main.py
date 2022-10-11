@@ -1,9 +1,8 @@
 #! python
 import json
-import time
 import os
+import time
 
-import pandas as pd
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
@@ -33,25 +32,17 @@ if __name__ == "__main__":
 
     elif args.mode == "train" or args.mode == "lr":
         # Train a new model from scratch, or resume training from a checkpoint.
-        ses_ids = [
-            x.replace(".pt", "") for x in os.listdir(args.dataset_dir) if ".pt" in x
-        ]
-
-        train_ses, test_ses = train_test_split(
-            ses_ids, train_size=0.8, random_state=9001
-        )
-        train_ses, val_ses = train_test_split(
-            train_ses, train_size=0.8, random_state=9001
-        )
+        train_ses_ids = torch.load(args.train_ids)
+        val_ses_ids = torch.load(args.val_ids)
 
         train_dataset = ConversationDataset(
-            ses_ids=train_ses,
+            ses_ids=train_ses_ids,
             features_dir=args.dataset_dir,
             embeddings_dir=args.embeddings_dir,
             speech_feature_keys=config["speech_feature_keys"],
         )
         train_dataloader = DataLoader(
-            dataset=train_dataset,
+            dataset=val_ses_ids,
             collate_fn=collate_fn,
             num_workers=args.num_workers,
             shuffle=True,

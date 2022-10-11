@@ -60,6 +60,20 @@ def train_subparser(subparsers):
         help="The number of dataloader workers",
     )
 
+    train_subparser.add_argument(
+        "--train-ids",
+        type=str,
+        required=True,
+        help="Path to a list of training IDs",
+    )
+
+    train_subparser.add_argument(
+        "--val-ids",
+        type=str,
+        required=True,
+        help="Path to a list of validation IDs",
+    )
+
 
 def test_subparser(subparsers):
     test_subparser = subparsers.add_parser(
