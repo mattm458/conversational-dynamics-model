@@ -25,7 +25,7 @@ def autoregress_feature(
     feature_autoregress_idx = torch.nonzero(feature_autoregress_mask, as_tuple=True)
 
     input_speech_features = input_speech_features.index_put(
-        feature_autoregress_idx, previous_output[feature_timestep_mask]
+        feature_autoregress_idx, previous_output[feature_timestep_mask].detach().clone()
     )
 
     return input_speech_features
