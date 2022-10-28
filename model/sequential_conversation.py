@@ -90,6 +90,7 @@ class SequentialConversationModel(pl.LightningModule):
         lr: float = 0.01,
         weight_decay: float = 0.0,
         decoder_activation: str = "tanh",
+        da: bool = False,
     ):
         super().__init__()
 
@@ -114,6 +115,8 @@ class SequentialConversationModel(pl.LightningModule):
 
         self.lr = lr
         self.weight_decay = weight_decay
+
+        self.da = da
 
         self.conversation_model = ConversationModel(
             num_speech_features=num_speech_features,
@@ -192,14 +195,19 @@ class SequentialConversationModel(pl.LightningModule):
             us_count=y["us_count"],
         )
 
-        return (
+        output = [
             outputs,
             attention_scores,
             attention_scores_len,
             y["speech_features"],
             y["speech_features_len"],
             y["speaker"],
-        )
+        ]
+
+        if self.da:
+            output.append(y["da"])
+
+        return tuple(output)
 
     def validation_step(self, batch, batch_idx):
         X, y = batch
